@@ -1000,17 +1000,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc7cc5abccb5d084e926a811dee56f45, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tictactoeButton00: {fileID: 254050306}
-  tictactoeButton01: {fileID: 1449252964}
-  tictactoeButton02: {fileID: 591669247}
-  tictactoeButton10: {fileID: 518273320}
-  tictactoeButton11: {fileID: 116129524}
-  tictactoeButton12: {fileID: 42920920}
-  tictactoeButton20: {fileID: 1935267979}
-  tictactoeButton21: {fileID: 315709649}
-  tictactoeButton22: {fileID: 763702425}
-  X: {fileID: 2402457126480048860, guid: ef4914c60022aeb439e0260bce213031, type: 3}
-  O: {fileID: 2670090489209956009, guid: d82a8dbac5d66c748aa8be1b4e5d8c1f, type: 3}
+  _currentPlayer: 0
+  _tictactoeButton00: {fileID: 254050306}
+  _tictactoeButton01: {fileID: 1449252964}
+  _tictactoeButton02: {fileID: 591669247}
+  _tictactoeButton10: {fileID: 518273320}
+  _tictactoeButton11: {fileID: 116129524}
+  _tictactoeButton12: {fileID: 42920920}
+  _tictactoeButton20: {fileID: 1935267979}
+  _tictactoeButton21: {fileID: 315709649}
+  _tictactoeButton22: {fileID: 763702425}
+  _X: {fileID: 2402457126480048860, guid: ef4914c60022aeb439e0260bce213031, type: 3}
+  _O: {fileID: 2670090489209956009, guid: d82a8dbac5d66c748aa8be1b4e5d8c1f, type: 3}
+  _round: 0
+  _scoreX: 0
+  _scoreO: 0
 --- !u!4 &502651914
 Transform:
   m_ObjectHideFlags: 0
