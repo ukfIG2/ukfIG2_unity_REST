@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class GameManagerMultiplayer : MonoBehaviour
+public class GameManagerSinglePlayer : MonoBehaviour
 {
     public enum Player { X, O, None }
     private Player[,] _currentPlay = new Player[3, 3];
