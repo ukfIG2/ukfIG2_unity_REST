@@ -4,6 +4,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using System;
+using UnityEngine.Networking;
 
 public class LoginMenuScript : MonoBehaviour
 {
@@ -26,13 +27,15 @@ public class LoginMenuScript : MonoBehaviour
     [SerializeField] private string _nickName;
     [SerializeField] private string _password;
 
+    [SerializeField] private int _temporaryId;
+
     void Start()
     {
         // Initially hide all UI elements
         HideAllUI();
 
         // Check PlayerPrefs for nickname and password
-    if (string.IsNullOrEmpty(PlayerPrefs.GetString("Nickname")) || string.IsNullOrEmpty(PlayerPrefs.GetString("Password")) || string.IsNullOrEmpty(PlayerPrefs.GetString("id")))
+        if (string.IsNullOrEmpty(PlayerPrefs.GetString("Nickname")) || string.IsNullOrEmpty(PlayerPrefs.GetString("Password")) || string.IsNullOrEmpty(PlayerPrefs.GetString("id")))
         {
             // Show UI for entering nickname
             ShowEnterNicknameUI();
@@ -40,7 +43,6 @@ public class LoginMenuScript : MonoBehaviour
         else
         {
             //Prehodime sa do druheheo canvasu
-
         }
     }
 
@@ -78,6 +80,11 @@ public class LoginMenuScript : MonoBehaviour
         _enterPasswordLogin.gameObject.SetActive(true);
         _passwordLoginInput.gameObject.SetActive(true);
         _loginButton.SetActive(true);
+
+        _nicknameNoExist.gameObject.SetActive(false);
+        _enterPasswordRegister.gameObject.SetActive(false);
+        _passwordRegisterInput.gameObject.SetActive(false);
+        _registerButton.SetActive(false);
     }
 
     private void ShowEnterPasswordRegisterUI()
@@ -86,82 +93,105 @@ public class LoginMenuScript : MonoBehaviour
         _enterPasswordRegister.gameObject.SetActive(true);
         _passwordRegisterInput.gameObject.SetActive(true);
         _registerButton.SetActive(true);
-    }
 
-    public void OnCheckNicknameButtonClicked()
-    {
-        _nickName = _nicknameInput.text;
-
-        // Check if nickname exists in the database (pseudo-code)
-        bool nicknameExists = CheckNicknameInDatabase(_nickName);
-
-        if (nicknameExists)
-        {
-            ShowEnterPasswordLoginUI();
-        }
-        else
-        {
-            ShowEnterPasswordRegisterUI();
-        }
+        _nicknameExist.gameObject.SetActive(false);
+        _enterPasswordLogin.gameObject.SetActive(false);
+        _passwordLoginInput.gameObject.SetActive(false);
+        _loginButton.SetActive(false);
     }
 
     public void OnLoginButtonClicked()
     {
-        _password = _passwordLoginInput.text;
 
-        // Validate login credentials (pseudo-code)
-        bool loginSuccessful = ValidateLogin(_nickName, _password);
-
-        if (loginSuccessful)
-        {
-            // Proceed to the game
-            Debug.Log("Login successful!");
-        }
-        else
-        {
-            Debug.Log("Invalid login credentials.");
-        }
     }
 
     public void OnRegisterButtonClicked()
     {
-        _password = _passwordRegisterInput.text;
 
-        // Register new user (pseudo-code)
-        bool registrationSuccessful = RegisterNewUser(_nickName, _password);
-
-        if (registrationSuccessful)
-        {
-            // Proceed to the game
-            Debug.Log("Registration successful!");
-        }
-        else
-        {
-            Debug.Log("Registration failed.");
-        }
     }
 
-    private bool CheckNicknameInDatabase(string nickname)
-    {
-        // Implement database check logic here
-        return false; // Placeholder
-    }
 
-    private bool ValidateLogin(string nickname, string password)
-    {
-        // Implement login validation logic here
-        return false; // Placeholder
-    }
 
-    private bool RegisterNewUser(string nickname, string password)
+    public void ResetPlayerPrefs()
     {
-        // Implement user registration logic here
-        return false; // Placeholder
-    }
-
-    private void ResetPlayerPrefs()
-    {
+        Debug.Log("Nickname: " + PlayerPrefs.GetString("Nickname"));
+        Debug.Log("Password: " + PlayerPrefs.GetString("Password"));
+        Debug.Log("id: " + PlayerPrefs.GetInt("_id"));        
         PlayerPrefs.DeleteKey("Nickname");
         PlayerPrefs.DeleteKey("Password");
+        Debug.Log("Nickname: " + PlayerPrefs.GetString("Nickname"));
+        Debug.Log("Password: " + PlayerPrefs.GetString("Password"));
+        Debug.Log("id: " + PlayerPrefs.GetInt("_id"));
+    }
+
+////////////////////////////REST/////////////////////////
+    public void OnCheckNicknameButtonClicked()
+    {
+        _nickName = _nicknameInput.text;
+        StartCoroutine(CheckNicknameCoroutine(_nickName));
+    }
+
+    private IEnumerator CheckNicknameCoroutine(string nickname)
+    {
+        string url = "https://ukfig2.sk/ukfIG2_Piskvorky/nickNameExist.php"; // Replace with your backend URL
+        string json = "{\"nickname\": \"" + nickname + "\"}";
+
+        // Debug log for the data being sent to the backend
+        Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+        using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+        {
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
+
+            yield return www.SendWebRequest();
+
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("Error: " + www.error);
+            }
+            else
+            {
+                // Parse the response
+                string responseText = www.downloadHandler.text;
+                Debug.Log("Response Text: " + responseText); // Debug log for response text
+                HandleNicknameResponse(responseText);
+            }
+        }
+    }
+
+    private void HandleNicknameResponse(string responseText)
+    {
+        // Assuming the response is in JSON format
+        // Example response: {"status": "Nothing"} or {"status": "idFound", "id": 123}
+        try
+        {
+            var response = JsonUtility.FromJson<NicknameResponse>(responseText);
+            Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+
+            if (response.status == "Nothing")
+            {
+                ShowEnterPasswordRegisterUI();
+            }
+            else if (response.status == "idFound")
+            {
+                _id = response.id;
+                _temporaryId = response.id; // Set the _temporaryId
+                ShowEnterPasswordLoginUI();
+            }
+        }
+        catch (ArgumentException e)
+        {
+            Debug.LogError("JSON parse error: " + e.Message);
+        }
+    }
+
+    [System.Serializable]
+    private class NicknameResponse
+    {
+        public string status;
+        public int id;
     }
 }
