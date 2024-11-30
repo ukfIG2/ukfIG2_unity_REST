@@ -104,11 +104,6 @@ public class LoginMenuScript : MonoBehaviour
         _loginButton.SetActive(false);
     }
 
-    public void OnRegisterButtonClicked()
-    {
-
-    }
-
     public void ResetPlayerPrefs()
     {
         Debug.Log("Nickname: " + PlayerPrefs.GetString("Nickname"));
@@ -271,5 +266,86 @@ private class LoginResponse
     public string password;
 }
 ///////////////////////////////REST Login Button////////////////////////////////
+///////////////////////////////REST Register Button////////////////////////////////
+public void OnRegisterButtonClicked()
+{
+    _nickName = _nicknameInput.text;
+    _password = _passwordRegisterInput.text;
+    StartCoroutine(RegisterCoroutine(_nickName, _password));
+}
+
+private IEnumerator RegisterCoroutine(string nickname, string password)
+{
+    string url = "https://ukfig2.sk/ukfIG2_Piskvorky/register.php"; // Replace with your backend URL
+    string json = "{\"nickname\": \"" + nickname + "\", \"password\": \"" + password + "\"}";
+
+    // Debug log for the data being sent to the backend
+    Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+    using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+    {
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
+
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("Error: " + www.error);
+        }
+        else
+        {
+            // Parse the response
+            string responseText = www.downloadHandler.text;
+            Debug.Log("Response Text: " + responseText); // Debug log for response text
+            HandleRegisterResponse(responseText);
+        }
+    }
+}
+
+private void HandleRegisterResponse(string responseText)
+{
+    // Assuming the response is in JSON format
+    // Example response: {"status": "success", "id": 123, "nickname": "ivan", "password": "password123"}
+    try
+    {
+        var response = JsonUtility.FromJson<RegisterResponse>(responseText);
+        Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+
+        if (response.status == "success")
+        {
+            _id = response.id;
+            PlayerPrefs.SetInt("Id", _id);
+            _nickName = response.nickname;
+            PlayerPrefs.SetString("Nickname", _nickName);
+            _password = response.password;
+            PlayerPrefs.SetString("Password", _password);
+
+            // Hide all UI elements
+            HideAllUI();
+        }
+        else
+        {
+            _wrongPassword.text = "Registration failed";
+            _wrongPassword.gameObject.SetActive(true);
+        }
+    }
+    catch (ArgumentException e)
+    {
+        Debug.LogError("JSON parse error: " + e.Message);
+    }
+}
+
+[System.Serializable]
+private class RegisterResponse
+{
+    public string status;
+    public int id;
+    public string nickname;
+    public string password;
+}
+///////////////////////////////REST Register Button////////////////////////////////
 
 }
