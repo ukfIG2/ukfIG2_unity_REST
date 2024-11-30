@@ -23,6 +23,8 @@ public class LoginMenuScript : MonoBehaviour
     [SerializeField] private TMP_InputField _passwordRegisterInput;
     [SerializeField] private GameObject _registerButton;
 
+    [SerializeField] private TMP_Text _wrongPassword;
+
     [SerializeField] private int _id;
     [SerializeField] private string _nickName;
     [SerializeField] private string _password;
@@ -65,6 +67,8 @@ public class LoginMenuScript : MonoBehaviour
         _enterPasswordRegister.gameObject.SetActive(false);
         _passwordRegisterInput.gameObject.SetActive(false);
         _registerButton.SetActive(false);
+
+        _wrongPassword.gameObject.SetActive(false);
     }
 
     private void ShowEnterNicknameUI()
@@ -100,31 +104,25 @@ public class LoginMenuScript : MonoBehaviour
         _loginButton.SetActive(false);
     }
 
-    public void OnLoginButtonClicked()
-    {
-
-    }
-
     public void OnRegisterButtonClicked()
     {
 
     }
 
-
-
     public void ResetPlayerPrefs()
     {
         Debug.Log("Nickname: " + PlayerPrefs.GetString("Nickname"));
         Debug.Log("Password: " + PlayerPrefs.GetString("Password"));
-        Debug.Log("id: " + PlayerPrefs.GetInt("_id"));        
+        Debug.Log("id: " + PlayerPrefs.GetInt("Id"));        
         PlayerPrefs.DeleteKey("Nickname");
         PlayerPrefs.DeleteKey("Password");
+        PlayerPrefs.DeleteKey("Id");
         Debug.Log("Nickname: " + PlayerPrefs.GetString("Nickname"));
         Debug.Log("Password: " + PlayerPrefs.GetString("Password"));
-        Debug.Log("id: " + PlayerPrefs.GetInt("_id"));
+        Debug.Log("id: " + PlayerPrefs.GetInt("Id"));
     }
 
-////////////////////////////REST/////////////////////////
+////////////////////////////REST    CheckNickname/////////////////////////
     public void OnCheckNicknameButtonClicked()
     {
         _nickName = _nicknameInput.text;
@@ -177,7 +175,6 @@ public class LoginMenuScript : MonoBehaviour
             }
             else if (response.status == "idFound")
             {
-                _id = response.id;
                 _temporaryId = response.id; // Set the _temporaryId
                 ShowEnterPasswordLoginUI();
             }
@@ -194,4 +191,85 @@ public class LoginMenuScript : MonoBehaviour
         public string status;
         public int id;
     }
+///////////////////////////////REST CheckNickname////////////////////////////////
+////////////////////////////REST Login Button/////////////////////////
+public void OnLoginButtonClicked()
+{
+    _password = _passwordLoginInput.text;
+    StartCoroutine(LoginCoroutine(_temporaryId, _password));
+}
+
+private IEnumerator LoginCoroutine(int id, string password)
+{
+    string url = "https://ukfig2.sk/ukfIG2_Piskvorky/login.php"; // Replace with your backend URL
+    string json = "{\"id\": " + id + ", \"password\": \"" + password + "\"}";
+
+    // Debug log for the data being sent to the backend
+    Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+    using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+    {
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
+
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("Error: " + www.error);
+        }
+        else
+        {
+            // Parse the response
+            string responseText = www.downloadHandler.text;
+            Debug.Log("Response Text: " + responseText); // Debug log for response text
+            HandleLoginResponse(responseText);
+        }
+    }
+}
+
+private void HandleLoginResponse(string responseText)
+{
+    // Assuming the response is in JSON format
+    // Example response: {"status": "success", "id": 123, "nickname": "ivan", "password": "password123"}
+    try
+    {
+        var response = JsonUtility.FromJson<LoginResponse>(responseText);
+        Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+
+        if (response.status == "success")
+        {
+            _id = response.id;
+            PlayerPrefs.SetInt("Id", _id);
+            _nickName = response.nickname;
+            PlayerPrefs.SetString("Nickname", _nickName);
+            _password = response.password;
+            PlayerPrefs.SetString("Password", _password);
+
+            // Hide all UI elements
+            HideAllUI();
+        }
+        else
+        {
+            _wrongPassword.gameObject.SetActive(true);
+        }
+    }
+    catch (ArgumentException e)
+    {
+        Debug.LogError("JSON parse error: " + e.Message);
+    }
+}
+
+[System.Serializable]
+private class LoginResponse
+{
+    public string status;
+    public int id;
+    public string nickname;
+    public string password;
+}
+///////////////////////////////REST Login Button////////////////////////////////
+
 }
