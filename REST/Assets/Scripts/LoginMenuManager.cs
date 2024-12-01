@@ -5,6 +5,7 @@ using TMPro;
 using UnityEngine.UI;
 using System;
 using UnityEngine.Networking;
+using UnityEngine.SceneManagement;
 
 public class LoginMenuScript : MonoBehaviour
 {
@@ -885,7 +886,8 @@ private void CreateGameButton(FetchGamesResponse.GameData game)
 
 private void OnGameButtonClicked(int gameId)
 {
-    Debug.Log("Game button clicked: " + gameId);
+    PlayerPrefs.SetInt("gameId", gameId);
+    SceneManager.LoadScene("MultiPlayer");
 }
 
 [System.Serializable]

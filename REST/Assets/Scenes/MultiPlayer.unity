@@ -360,7 +360,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 502651915}
-          m_TargetAssemblyTypeName: GameManagerMultiplayer, Assembly-CSharp
+          m_TargetAssemblyTypeName: GameManagerMultiPlayer, Assembly-CSharp
           m_MethodName: HandleButton12
           m_Mode: 1
           m_Arguments:
@@ -495,7 +495,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 502651915}
-          m_TargetAssemblyTypeName: GameManagerMultiplayer, Assembly-CSharp
+          m_TargetAssemblyTypeName: GameManagerMultiPlayer, Assembly-CSharp
           m_MethodName: HandleButton11
           m_Mode: 1
           m_Arguments:
@@ -735,7 +735,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 502651915}
-          m_TargetAssemblyTypeName: GameManagerMultiplayer, Assembly-CSharp
+          m_TargetAssemblyTypeName: GameManagerMultiPlayer, Assembly-CSharp
           m_MethodName: HandleButton00
           m_Mode: 1
           m_Arguments:
@@ -870,7 +870,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 502651915}
-          m_TargetAssemblyTypeName: GameManagerMultiplayer, Assembly-CSharp
+          m_TargetAssemblyTypeName: GameManagerMultiPlayer, Assembly-CSharp
           m_MethodName: HandleButton21
           m_Mode: 1
           m_Arguments:
@@ -1200,10 +1200,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 502651912}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4f7fca76d3adbf4bbbf3d4783461e7c5, type: 3}
+  m_Script: {fileID: 11500000, guid: 33126b7c279683c3d83d7d9db51ba024, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _currentPlayer: 0
+  _currentPlayerTurn: 0
+  _playersTurn: 0
   _tictactoeButton00: {fileID: 254050306}
   _tictactoeButton01: {fileID: 1449252964}
   _tictactoeButton02: {fileID: 591669247}
@@ -1219,6 +1221,8 @@ MonoBehaviour:
   _scoreX: 0
   _scoreO: 0
   _eventSystem: {fileID: 370208490}
+  _gameId: 0
+  _userId: 0
 --- !u!1 &518273320
 GameObject:
   m_ObjectHideFlags: 0
@@ -1343,7 +1347,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 502651915}
-          m_TargetAssemblyTypeName: GameManagerMultiplayer, Assembly-CSharp
+          m_TargetAssemblyTypeName: GameManagerMultiPlayer, Assembly-CSharp
           m_MethodName: HandleButton10
           m_Mode: 1
           m_Arguments:
@@ -1478,7 +1482,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 502651915}
-          m_TargetAssemblyTypeName: GameManagerMultiplayer, Assembly-CSharp
+          m_TargetAssemblyTypeName: GameManagerMultiPlayer, Assembly-CSharp
           m_MethodName: HandleButton02
           m_Mode: 1
           m_Arguments:
@@ -1747,7 +1751,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 502651915}
-          m_TargetAssemblyTypeName: GameManagerMultiplayer, Assembly-CSharp
+          m_TargetAssemblyTypeName: GameManagerMultiPlayer, Assembly-CSharp
           m_MethodName: HandleButton22
           m_Mode: 1
           m_Arguments:
@@ -2411,7 +2415,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 502651915}
-          m_TargetAssemblyTypeName: GameManagerMultiplayer, Assembly-CSharp
+          m_TargetAssemblyTypeName: GameManagerMultiPlayer, Assembly-CSharp
           m_MethodName: HandleButton01
           m_Mode: 1
           m_Arguments:
@@ -2651,7 +2655,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 502651915}
-          m_TargetAssemblyTypeName: GameManagerMultiplayer, Assembly-CSharp
+          m_TargetAssemblyTypeName: GameManagerMultiPlayer, Assembly-CSharp
           m_MethodName: HandleButton20
           m_Mode: 1
           m_Arguments:
