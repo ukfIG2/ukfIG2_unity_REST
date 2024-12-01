@@ -42,6 +42,7 @@ public class GameManagerMultiPlayer : MonoBehaviour
     [SerializeField] private int _gameId;
     [SerializeField] private int _userId;
 
+
     private void Start()
     {
         _gameId = PlayerPrefs.GetInt("gameId");
@@ -330,6 +331,7 @@ public class GameManagerMultiPlayer : MonoBehaviour
                     //Debug.Log($"_currentPlay[{i},{j}] = {_currentPlay[i, j]}");
                 }
             }
+            _eventSystem.enabled = true;
         }
         catch (System.Exception ex)
         {
