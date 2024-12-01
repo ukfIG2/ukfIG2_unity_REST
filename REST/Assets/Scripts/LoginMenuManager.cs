@@ -35,7 +35,8 @@ public class LoginMenuScript : MonoBehaviour
 
     [SerializeField] private GameObject _startSearchingForOponentButton;
     [SerializeField] private GameObject _buttonPrefab; // Assign the button prefab in the Inspector
-    [SerializeField] private Transform _contentParent; // Assign the Content GameObject in the Inspector    
+    [SerializeField] private Transform _contentParent; // Assign the Content GameObject in the Inspector  
+    [SerializeField] private Transform _contentParent2;  
 
     private void Start()
     {
@@ -64,6 +65,7 @@ public class LoginMenuScript : MonoBehaviour
             // Display start searching for opponent button
             _startSearchingForOponentButton.gameObject.SetActive(true);
             OnFetchOpponentsButtonClicked();
+            OnFetchInvitedOpponentsButtonClicked();
         }
     }
 
@@ -439,97 +441,95 @@ private class StartSearchingResponse
 }
 //////////////////////////////REST StartSearching for oponent//////////////////////
 //////////////////////////////REST Fetch Opponents//////////////////////
-    public void OnFetchOpponentsButtonClicked()
+public void OnFetchOpponentsButtonClicked()
+{
+    _id = PlayerPrefs.GetInt("Id");
+    _password = PlayerPrefs.GetString("Password");
+    StartCoroutine(FetchOpponentsCoroutine(_id, _password));
+}
+
+private IEnumerator FetchOpponentsCoroutine(int id, string password)
+{
+    string url = "https://ukfig2.sk/ukfIG2_Piskvorky/fetch_opponents.php"; // Replace with your backend URL
+    string json = "{\"id\": " + id + ", \"password\": \"" + password + "\"}";
+
+    // Debug log for the data being sent to the backend
+    Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+    using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
     {
-        _id = PlayerPrefs.GetInt("Id");
-        _password = PlayerPrefs.GetString("Password");
-        StartCoroutine(FetchOpponentsCoroutine(_id, _password));
-    }
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
 
+        yield return www.SendWebRequest();
 
-    private IEnumerator FetchOpponentsCoroutine(int id, string password)
-    {
-        string url = "https://ukfig2.sk/ukfIG2_Piskvorky/fetch_opponents.php"; // Replace with your backend URL
-        string json = "{\"id\": " + id + ", \"password\": \"" + password + "\"}";
-
-        // Debug log for the data being sent to the backend
-        Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
-
-        using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+        if (www.result != UnityWebRequest.Result.Success)
         {
-            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
-            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            www.downloadHandler = new DownloadHandlerBuffer();
-            www.SetRequestHeader("Content-Type", "application/json");
-
-            yield return www.SendWebRequest();
-
-            if (www.result != UnityWebRequest.Result.Success)
-            {
-                Debug.LogError("Error: " + www.error);
-            }
-            else
-            {
-                // Parse the response
-                string responseText = www.downloadHandler.text;
-                Debug.Log("Response Text: " + responseText); // Debug log for response text
-                HandleFetchOpponentsResponse(responseText);
-            }
+            Debug.LogError("Error: " + www.error);
+        }
+        else
+        {
+            // Parse the response
+            string responseText = www.downloadHandler.text;
+            Debug.Log("Response Text: " + responseText); // Debug log for response text
+            HandleFetchOpponentsResponse(responseText);
         }
     }
+}
 
-    private void HandleFetchOpponentsResponse(string responseText)
+private void HandleFetchOpponentsResponse(string responseText)
+{
+    // Assuming the response is in JSON format
+    // Example response: {"status": "success", "opponents": [{"id": 123, "nickname": "ivan", "invitee_user_id": 456, "came_here_at": "2024-11-30 12:00:00"}]}
+    try
     {
-        // Assuming the response is in JSON format
-        // Example response: {"status": "success", "opponents": [{"id": 123, "nickname": "ivan", "invitee_user_id": 456, "came_here_at": "2024-11-30 12:00:00"}]}
-        try
-        {
-            var response = JsonUtility.FromJson<FetchOpponentsResponse>(responseText);
-            Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+        var response = JsonUtility.FromJson<FetchOpponentsResponse>(responseText);
+        Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
 
-            if (response.status == "success")
+        if (response.status == "success")
+        {
+            foreach (var opponent in response.opponents)
             {
-                foreach (var opponent in response.opponents)
-                {
-                    CreateOpponentButton(opponent);
-                }
-            }
-            else
-            {
-                Debug.LogError("Failed to fetch opponents.");
+                CreateOpponentButton(opponent);
             }
         }
-        catch (ArgumentException e)
+        else
         {
-            Debug.LogError("JSON parse error: " + e.Message);
+            Debug.LogError("Failed to fetch opponents.");
         }
     }
-
-    private void CreateOpponentButton(OpponentData opponent)
+    catch (ArgumentException e)
     {
-        // Create a new button for each opponent
-        GameObject newButton = Instantiate(_buttonPrefab, _contentParent);
-        TMP_Text buttonText = newButton.GetComponentInChildren<TMP_Text>();
-    
-        if (buttonText == null)
-        {
-            Debug.LogError("Button Prefab does not have a TMP_Text component.");
-            return;
-        }
-    
-        buttonText.text = opponent.nickname;
-        newButton.GetComponent<Button>().onClick.AddListener(() => OnOpponentButtonClicked(opponent.invitee_user_id));
-    
-        // Position the new button 40 units above the existing buttons
-        RectTransform newButtonRectTransform = newButton.GetComponent<RectTransform>();
-        RectTransform contentRectTransform = _contentParent.GetComponent<RectTransform>();
-        newButtonRectTransform.anchoredPosition = new Vector2(0, -40 * (_contentParent.childCount - 1));
-    
-        newButton.SetActive(true);
+        Debug.LogError("JSON parse error: " + e.Message);
+    }
+}
+
+private void CreateOpponentButton(FetchOpponentsResponse.OpponentData opponent)
+{
+    // Create a new button for each opponent
+    GameObject newButton = Instantiate(_buttonPrefab, _contentParent);
+    TMP_Text buttonText = newButton.GetComponentInChildren<TMP_Text>();
+
+    if (buttonText == null)
+    {
+        Debug.LogError("Button Prefab does not have a TMP_Text component.");
+        return;
     }
 
+    buttonText.text = opponent.nickname;
+    newButton.GetComponent<Button>().onClick.AddListener(() => OnOpponentButtonClicked(opponent.invitee_user_id));
 
-    private void OnOpponentButtonClicked(int opponentId)
+    // Position the new button 40 units above the existing buttons
+    RectTransform newButtonRectTransform = newButton.GetComponent<RectTransform>();
+    RectTransform contentRectTransform = _contentParent.GetComponent<RectTransform>();
+    newButtonRectTransform.anchoredPosition = new Vector2(0, -40 * (_contentParent.childCount - 1));
+
+    newButton.SetActive(true);
+}
+
+private void OnOpponentButtonClicked(int opponentId)
 {
     _id = PlayerPrefs.GetInt("Id");
     _nickName = PlayerPrefs.GetString("Nickname");
@@ -598,21 +598,198 @@ private class InviteOpponentResponse
     public string status;
 }
 
-    [System.Serializable]
-    private class FetchOpponentsResponse
-    {
-        public string status;
-        public List<OpponentData> opponents;
-    }
+[System.Serializable]
+private class FetchOpponentsResponse
+{
+    public string status;
+    public List<OpponentData> opponents;
 
     [System.Serializable]
-    private class OpponentData
+    public class OpponentData
     {
         public int id;
         public string nickname;
         public int invitee_user_id;
         public string came_here_at;
     }
-    //////////////////////////////REST Fetch Opponents//////////////////////
+}
+//////////////////////////////REST Fetch Opponents//////////////////////
 
+///////////////////////////////REST Fetch Invited Opponents//////////////////////
+public void OnFetchInvitedOpponentsButtonClicked()
+{
+    _id = PlayerPrefs.GetInt("Id");
+    _password = PlayerPrefs.GetString("Password");
+    StartCoroutine(FetchInvitedOpponentsCoroutine(_id, _password));
+}
+
+private IEnumerator FetchInvitedOpponentsCoroutine(int id, string password)
+{
+    string url = "https://ukfig2.sk/ukfIG2_Piskvorky/fetch_invited_opponents.php"; // Replace with your backend URL
+    string json = "{\"id\": " + id + ", \"password\": \"" + password + "\"}";
+
+    // Debug log for the data being sent to the backend
+    Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+    using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+    {
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
+
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("Error: " + www.error);
+        }
+        else
+        {
+            // Parse the response
+            string responseText = www.downloadHandler.text;
+            Debug.Log("Response Text: " + responseText); // Debug log for response text
+            HandleFetchInvitedOpponentsResponse(responseText);
+        }
+    }
+}
+
+private void HandleFetchInvitedOpponentsResponse(string responseText)
+{
+    // Assuming the response is in JSON format
+    // Example response: {"status": "success", "opponents": [{"id": 123, "nickname": "ivan", "invitee_user_id": 456, "invited_user_id": 789, "came_here_at": "2024-11-30 12:00:00"}]}
+    try
+    {
+        var response = JsonUtility.FromJson<FetchInvitedOpponentsResponse>(responseText);
+        Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+
+        if (response.status == "success")
+        {
+            foreach (var opponent in response.opponents)
+            {
+                CreateInvitedOpponentButton(opponent);
+            }
+        }
+        else
+        {
+            Debug.LogError("Failed to fetch invited opponents.");
+        }
+    }
+    catch (ArgumentException e)
+    {
+        Debug.LogError("JSON parse error: " + e.Message);
+    }
+}
+
+private void CreateInvitedOpponentButton(FetchInvitedOpponentsResponse.OpponentData opponent)
+{
+    // Create a new button for each invited opponent
+    GameObject newButton = Instantiate(_buttonPrefab, _contentParent2);
+    TMP_Text buttonText = newButton.GetComponentInChildren<TMP_Text>();
+
+    if (buttonText == null)
+    {
+        Debug.LogError("Button Prefab does not have a TMP_Text component.");
+        return;
+    }
+
+    buttonText.text = opponent.nickname;
+    newButton.GetComponent<Button>().onClick.AddListener(() => OnInvitedOpponentButtonClicked(opponent.invitee_user_id, opponent.invited_user_id));
+
+    // Change button color to green
+    newButton.GetComponent<Image>().color = Color.green;
+
+    // Position the new button 40 units above the existing buttons
+    RectTransform newButtonRectTransform = newButton.GetComponent<RectTransform>();
+    RectTransform contentRectTransform = _contentParent2.GetComponent<RectTransform>();
+    newButtonRectTransform.anchoredPosition = new Vector2(0, -40 * (_contentParent2.childCount - 1));
+
+    newButton.SetActive(true);
+}
+
+private void OnInvitedOpponentButtonClicked(int inviteeUserId, int invitedUserId)
+{
+    _id = PlayerPrefs.GetInt("Id");
+    _password = PlayerPrefs.GetString("Password");
+    StartCoroutine(HandleInvitedOpponentClickCoroutine(_id, _password, inviteeUserId, invitedUserId));
+}
+
+private IEnumerator HandleInvitedOpponentClickCoroutine(int id, string password, int inviteeUserId, int invitedUserId)
+{
+    string url = "https://ukfig2.sk/ukfIG2_Piskvorky/handle_invited_opponent_click.php"; // Replace with your backend URL
+    string json = "{\"id\": " + id + ", \"password\": \"" + password + "\", \"invitee_user_id\": " + inviteeUserId + ", \"invited_user_id\": " + invitedUserId + "}";
+
+    // Debug log for the data being sent to the backend
+    Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+    using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+    {
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
+
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("Error: " + www.error);
+        }
+        else
+        {
+            // Parse the response
+            string responseText = www.downloadHandler.text;
+            Debug.Log("Response Text: " + responseText); // Debug log for response text
+            HandleInvitedOpponentClickResponseFor(responseText);
+        }
+    }
+}
+
+private void HandleInvitedOpponentClickResponseFor(string responseText)
+{
+    // Assuming the response is in JSON format
+    // Example response: {"status": "success"} or {"status": "unsuccessful"}
+    try
+    {
+        var response = JsonUtility.FromJson<HandleInvitedOpponentClickResponse>(responseText);
+        Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+
+        if (response.status == "success")
+        {
+            Debug.Log("Successfully handled invited opponent click.");
+        }
+        else
+        {
+            Debug.LogError("Failed to handle invited opponent click.");
+        }
+    }
+    catch (ArgumentException e)
+    {
+        Debug.LogError("JSON parse error: " + e.Message);
+    }
+}
+
+[System.Serializable]
+private class HandleInvitedOpponentClickResponse
+{
+    public string status;
+}
+
+[System.Serializable]
+private class FetchInvitedOpponentsResponse
+{
+    public string status;
+    public List<OpponentData> opponents;
+
+    [System.Serializable]
+    public class OpponentData
+    {
+        public int id;
+        public string nickname;
+        public int invitee_user_id;
+        public int invited_user_id;
+        public string came_here_at;
+    }
+}
+///////////////////////////////REST Fetch Invited Opponents//////////////////////
 }
