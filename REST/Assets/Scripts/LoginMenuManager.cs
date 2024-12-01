@@ -37,6 +37,7 @@ public class LoginMenuScript : MonoBehaviour
     [SerializeField] private GameObject _buttonPrefab; // Assign the button prefab in the Inspector
     [SerializeField] private Transform _contentParent; // Assign the Content GameObject in the Inspector  
     [SerializeField] private Transform _contentParent2;  
+    [SerializeField] private Transform _contentParent3;
 
     private void Start()
     {
@@ -66,6 +67,7 @@ public class LoginMenuScript : MonoBehaviour
             _startSearchingForOponentButton.gameObject.SetActive(true);
             OnFetchOpponentsButtonClicked();
             OnFetchInvitedOpponentsButtonClicked();
+            OnFetchGamesButtonClicked();
         }
     }
 
@@ -791,5 +793,118 @@ private class FetchInvitedOpponentsResponse
         public string came_here_at;
     }
 }
-///////////////////////////////REST Fetch Invited Opponents//////////////////////
+/////////////////////////////////REST Fetch Games///////////////////////
+public void OnFetchGamesButtonClicked()
+{
+    _id = PlayerPrefs.GetInt("Id");
+    _password = PlayerPrefs.GetString("Password");
+    _nickName = PlayerPrefs.GetString("Nickname");
+    StartCoroutine(FetchGamesCoroutine(_id, _password, _nickName));
+}
+
+private IEnumerator FetchGamesCoroutine(int id, string password, string nickname)
+{
+    string url = "https://ukfig2.sk/ukfIG2_Piskvorky/fetch_games.php"; // Replace with your backend URL
+    string json = "{\"id\": " + id + ", \"password\": \"" + password + "\", \"nickname\": \"" + nickname + "\"}";
+
+    // Debug log for the data being sent to the backend
+    Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+    using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+    {
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
+
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("Error: " + www.error);
+        }
+        else
+        {
+            // Parse the response
+            string responseText = www.downloadHandler.text;
+            Debug.Log("Response Text: " + responseText); // Debug log for response text
+            HandleFetchGamesResponse(responseText);
+        }
+    }
+}
+
+private void HandleFetchGamesResponse(string responseText)
+{
+    // Assuming the response is in JSON format
+    // Example response: {"status": "success", "games": [{"id": 1, "player_1": 123, "player_2": 456, "created_at": "2024-11-30 12:00:00", "status": "Nothing", "player_turn": "X"}]}
+    try
+    {
+        var response = JsonUtility.FromJson<FetchGamesResponse>(responseText);
+        Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+
+        if (response.status == "success")
+        {
+            foreach (var game in response.games)
+            {
+                CreateGameButton(game);
+            }
+        }
+        else
+        {
+            Debug.LogError("Failed to fetch games.");
+        }
+    }
+    catch (ArgumentException e)
+    {
+        Debug.LogError("JSON parse error: " + e.Message);
+    }
+}
+
+private void CreateGameButton(FetchGamesResponse.GameData game)
+{
+    // Create a new button for each game
+    GameObject newButton = Instantiate(_buttonPrefab, _contentParent3);
+    TMP_Text buttonText = newButton.GetComponentInChildren<TMP_Text>();
+
+    if (buttonText == null)
+    {
+        Debug.LogError("Button Prefab does not have a TMP_Text component.");
+        return;
+    }
+
+    buttonText.text = $"Game {game.id}: {game.player_1} vs {game.player_2}";
+    newButton.GetComponent<Button>().onClick.AddListener(() => OnGameButtonClicked(game.id));
+
+    // Position the new button 40 units above the existing buttons
+    RectTransform newButtonRectTransform = newButton.GetComponent<RectTransform>();
+    RectTransform contentRectTransform = _contentParent3.GetComponent<RectTransform>();
+    newButtonRectTransform.anchoredPosition = new Vector2(0, -40 * (_contentParent3.childCount - 1));
+
+    newButton.SetActive(true);
+}
+
+private void OnGameButtonClicked(int gameId)
+{
+    Debug.Log("Game button clicked: " + gameId);
+}
+
+[System.Serializable]
+private class FetchGamesResponse
+{
+    public string status;
+    public List<GameData> games;
+
+    [System.Serializable]
+    public class GameData
+    {
+        public int id;
+        public int player_1;
+        public int player_2;
+        public string created_at;
+        public string status;
+        public string player_turn;
+    }
+}
+/////////////////////////////////REST Fetch Games///////////////////////
+
 }
