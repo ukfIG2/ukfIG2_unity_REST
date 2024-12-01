@@ -46,15 +46,8 @@ public class GameManagerMultiPlayer : MonoBehaviour
     {
         _gameId = PlayerPrefs.GetInt("gameId");
         _userId = PlayerPrefs.GetInt("Id");
-        Debug.Log(PlayerPrefs.GetInt("Id"));
-        Debug.Log(PlayerPrefs.GetString("Password"));
-        Debug.Log(PlayerPrefs.GetString("Nickname"));
-        Debug.Log(_userId);
-        Debug.Log(_gameId);
-        //InitializeBoard();
         StartCoroutine(FetchGameData());
         _eventSystem.enabled = true;
-        //InvokeRepeating("CheckGameStatus", 5.0f, 5.0f); // Check every 2 seconds
     }
 
     private void CheckGameStatus()
@@ -90,61 +83,48 @@ public class GameManagerMultiPlayer : MonoBehaviour
     public void HandleButton21() => HandleButtonClick(_tictactoeButton21, 2, 1);
     public void HandleButton22() => HandleButtonClick(_tictactoeButton22, 2, 2);
 
-private bool IsPlayersTurn()
-{
-    return (_currentPlayer == Player.X && _playersTurn == PlayerNumbers.Player_1) ||
-           (_currentPlayer == Player.O && _playersTurn == PlayerNumbers.Player_2);
-}
-
     public void HandleButtonClick(GameObject button, int x, int y)
-{
-    // Check if it's the current player's turn
-    if (!IsPlayersTurn())
     {
-        Debug.Log("It's not your turn! Fetching updated game data...");
-        StartCoroutine(FetchGameData());
-        return;
-    }
+        // Check if it's the current player's turn
+        if (_currentPlayerTurn != _playersTurn)
+        {
+            Debug.Log("It's not your turn!");
+            StartCoroutine(FetchGameData());
+            return;
+        }
 
-    // Check if the cell is already occupied
-    if (_currentPlay[x, y] != Player.None)
-    {
-        Debug.Log("This cell is already occupied!");
-        return;
-    }
+        // Check if the cell is already occupied
+        if (_currentPlay[x, y] != Player.None)
+        {
+            Debug.Log("This cell is already occupied!");
+            return;
+        }
 
-    // Update the local game state
-    _currentPlay[x, y] = _currentPlayer;
+        // Update the local game state
+        _currentPlay[x, y] = _currentPlayer;
 
-    // Display the move
-    SynchronizeDisplay();
+        // Display the move
+        SynchronizeDisplay();
 
-    // Check if there's a winner
-    if (CheckWinner())
-    {
-        Debug.Log($"{_currentPlayer} wins!");
-        StartCoroutine(ResetBoardAfterDelay());
-        _eventSystem.enabled = false;
-    }
-    else if (IsBoardFull())
-    {
-        Debug.Log("Draw!");
-        StartCoroutine(ResetBoardAfterDelay());
-        _eventSystem.enabled = false;
-    }
-    else
-    {
-        // Change the turn and update game data on the server
-        //ChangePlayer();
-        StartCoroutine(UpdateGameData());
-    }
-}
-
-
-
-    private void ChangePlayer()
-    {
-        _currentPlayer = (_currentPlayer == Player.X) ? Player.O : Player.X;
+        // Check if there's a winner
+        if (CheckWinner())
+        {
+            Debug.Log($"{_currentPlayer} wins!");
+            StartCoroutine(ResetBoardAfterDelay());
+            _eventSystem.enabled = false;
+        }
+        else if (IsBoardFull())
+        {
+            Debug.Log("Draw!");
+            StartCoroutine(ResetBoardAfterDelay());
+            _eventSystem.enabled = false;
+        }
+        else
+        {
+            // Change the turn and update game data on the server
+            _eventSystem.enabled = false;
+            StartCoroutine(UpdateGameData());
+        }
     }
 
     private bool CheckWinner()
@@ -202,43 +182,38 @@ private bool IsPlayersTurn()
                 }
             }
         }
-
         _round++;
-        ChangePlayer();
         _eventSystem.enabled = true;
     }
 
     private void SynchronizeDisplay()
-{
-    for (int x = 0; x < 3; x++)
     {
-        for (int y = 0; y < 3; y++)
+        for (int x = 0; x < 3; x++)
         {
-            Player expectedPlayer = _currentPlay[x, y];
-            GameObject currentObject = _spawnedObjects[x, y];
+            for (int y = 0; y < 3; y++)
+            {
+                Player expectedPlayer = _currentPlay[x, y];
+                GameObject currentObject = _spawnedObjects[x, y];
 
-            if (expectedPlayer == Player.None && currentObject != null)
-            {
-                // Remove the object if no player is expected here
-                Destroy(currentObject);
-                _spawnedObjects[x, y] = null;
-            }
-            else if (expectedPlayer == Player.X && (currentObject == null || currentObject.tag != "X"))
-            {
-                if (currentObject != null) Destroy(currentObject);
-                _spawnedObjects[x, y] = Instantiate(_X, GetButtonPosition(x, y), Quaternion.identity);
-            }
-            else if (expectedPlayer == Player.O && (currentObject == null || currentObject.tag != "O"))
-            {
-                if (currentObject != null) Destroy(currentObject);
-                _spawnedObjects[x, y] = Instantiate(_O, GetButtonPosition(x, y), Quaternion.identity);
+                if (expectedPlayer == Player.None && currentObject != null)
+                {
+                    // Remove the object if no player is expected here
+                    Destroy(currentObject);
+                    _spawnedObjects[x, y] = null;
+                }
+                else if (expectedPlayer == Player.X && (currentObject == null || currentObject.tag != "X"))
+                {
+                    if (currentObject != null) Destroy(currentObject);
+                    _spawnedObjects[x, y] = Instantiate(_X, GetButtonPosition(x, y), Quaternion.identity);
+                }
+                else if (expectedPlayer == Player.O && (currentObject == null || currentObject.tag != "O"))
+                {
+                    if (currentObject != null) Destroy(currentObject);
+                    _spawnedObjects[x, y] = Instantiate(_O, GetButtonPosition(x, y), Quaternion.identity);
+                }
             }
         }
     }
-
-    // Provide feedback on the current player's turn
-    Debug.Log($"It's {_playersTurn}'s turn ({_currentPlayer}).");
-}
 
     private Vector3 GetButtonPosition(int x, int y)
     {
@@ -252,12 +227,10 @@ private bool IsPlayersTurn()
         if (x == 2 && y == 1) return _tictactoeButton21.transform.position;
         if (x == 2 && y == 2) return _tictactoeButton22.transform.position;
 
-       // Debug.Log($"{x}{y}");
-
         return Vector3.zero;
     }
 
-    private void _debug_currentPosition()
+    private void _debug_currentStateOfGame()
     {
         for (int i = 0; i < 3; i++)
         {
@@ -289,200 +262,133 @@ private bool IsPlayersTurn()
             }
         }
     }
-private void ProcessGameData(string jsonData)
-{/*
-    
-
-    
-
-    // Manually parse the game JSON string
-    if (!string.IsNullOrEmpty(gameData.game))
+    private void ProcessGameData(string jsonData)
     {
-        Game game = JsonUtility.FromJson<Game>(gameData.game);
-        if (game != null && game.board != null)
-        {
-            Debug.Log("Board data found:");
-            PrintBoard(game.board);
+        Debug.Log(jsonData);
+        GameData data = JsonConvert.DeserializeObject<GameData>(jsonData);
 
-            // Update game state using the board data
-            for (int x = 0; x < 3; x++)
-            {
-                for (int y = 0; y < 3; y++)
-                {
-                    Debug.Log($"Board[{x}][{y}] = {game.board[x].value[y]}");
-                    switch (game.board[x].value[y])
-                    {
-                        case "X":
-                            _currentPlay[x, y] = Player.X;
-                            break;
-                        case "O":
-                            _currentPlay[x, y] = Player.O;
-                            break;
-                        default:
-                            _currentPlay[x, y] = Player.None;
-                            break;
-                    }
-                }
-            }
-            _debug_currentPosition();
-            SynchronizeDisplay();
+        // Convert player IDs to integers
+        int player1Id = int.Parse(data.player_1);
+        int player2Id = int.Parse(data.player_2);
+
+        // Map player roles based on IDs
+        if (player1Id == _userId)
+        {
+            _player1 = Player.X;
+            _player2 = Player.O;
+            _currentPlayer = Player.X;
+            _currentPlayerTurn = PlayerNumbers.Player_1;
+        }
+        else if (player2Id == _userId)
+        {
+            _player1 = Player.O;
+            _player2 = Player.X;
+            _currentPlayer = Player.O;
+            _currentPlayerTurn = PlayerNumbers.Player_2;
         }
         else
         {
-            Debug.LogError("Board data is null");
+            Debug.LogError("Current player is not part of this game!");
+            return;
+        }
+
+        Debug.Log("Current player is " + _currentPlayer);
+
+    if (data.game != null)
+    {
+        try
+        {
+            // Extract the board
+            List<List<string>> board = data.game.board;
+
+            // Debug the board and update _currentPlay
+            for (int i = 0; i < board.Count; i++)
+            {
+                for (int j = 0; j < board[i].Count; j++)
+                {
+                    // Log the board value
+                    Debug.Log($"board[{i}][{j}] = {board[i][j]}");
+
+                    // Update _currentPlay based on board value
+                    switch (board[i][j])
+                    {
+                        case "X":
+                            _currentPlay[i, j] = Player.X;
+                            break;
+                        case "O":
+                            _currentPlay[i, j] = Player.O;
+                            break;
+                        case "None":
+                            _currentPlay[i, j] = Player.None;
+                            break;
+                        default:
+                            Debug.LogWarning($"Unexpected board value at [{i}][{j}]: {board[i][j]}");
+                            break;
+                    }
+
+                    // Optionally log _currentPlay for verification
+                    //Debug.Log($"_currentPlay[{i},{j}] = {_currentPlay[i, j]}");
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Error processing game data: {ex.Message}");
         }
     }
-    else
+    else 
     {
-        Debug.LogError("Game data is null");
         InitializeBoard();
     }
 
-    // Update round and scores
-    _round = gameData.round;
-    _player1Score = gameData.player_1_score;
-    _player2Score = gameData.player_2_score;
+        SynchronizeDisplay();
+        _round = int.Parse(data.round);
+        _player1Score = int.Parse(data.player_1_score);
+        _player2Score = int.Parse(data.player_2_score);
 
-    // Determine whose turn it is
-    if (gameData.player_turn == "player_1")
-    {
-        _playersTurn = PlayerNumbers.Player_1;
-        Debug.Log("Player 1's turn.");
-    }
-    else if (gameData.player_turn == "player_2")
-    {
-        _playersTurn = PlayerNumbers.Player_2;
-        Debug.Log("Player 2's turn.");
-    }
-}
-
-private void PrintBoard(Board[] board)
-{
-    if (board == null)
-    {
-        Debug.LogError("Board is null");
-        return;
-    }
-
-    foreach (var row in board)
-    {
-        foreach (var value in row.value)
+        // Determine whose turn it is
+        if (data.player_turn == "player_1")
         {
-            Debug.Log($"Value: {value}");
+            _playersTurn = PlayerNumbers.Player_1;
+            Debug.Log("Player 1's turn.");
+        }
+        else if (data.player_turn == "player_2")
+        {
+            _playersTurn = PlayerNumbers.Player_2;
+            Debug.Log("Player 2's turn.");
+        }
+
+        Debug.Log("Current player: " + _currentPlayerTurn.ToString());
+        Debug.Log("Playersturn: + " + _playersTurn.ToString());
+
+        if (_currentPlayerTurn != _playersTurn)
+        {
+            Debug.Log("It is not yours turn.");
+            StartCoroutine(HasGameChanged());
         }
     }
-}
-*/
-    Debug.Log(jsonData);
-    GameData data = JsonConvert.DeserializeObject<GameData>(jsonData);
-
-    int currentPlayerId = PlayerPrefs.GetInt("Id");
-    Debug.Log(data);
-
-    // Convert player IDs to integers
-    int player1Id = int.Parse(data.player_1);
-    int player2Id = int.Parse(data.player_2);
-
-    // Map player roles based on IDs
-    if (player1Id == currentPlayerId)
+        
+    [System.Serializable]
+    public class GameData
     {
-        _player1 = Player.X;
-        _player2 = Player.O;
-        _currentPlayer = Player.X;
-    }
-    else if (player2Id == currentPlayerId)
-    {
-        _player1 = Player.O;
-        _player2 = Player.X;
-        _currentPlayer = Player.O;
-    }
-    else
-    {
-        Debug.LogError("Current player is not part of this game!");
-        return;
+        public string id { get; set; }
+        public string player_1 { get; set; }
+        public string player_2 { get; set; }
+        public Game game { get; set; }
+        public string created_at { get; set; }
+        public string updated_at { get; set; }
+        public string status { get; set; }
+        public string player_turn { get; set; }
+        public string player_1_score { get; set; }
+        public string player_2_score { get; set; }
+        public string round { get; set; }
     }
 
-    Debug.Log("Current player is " + _currentPlayer);
-
-try
-{
-    // Extract the board
-    List<List<string>> board = data.game.board;
-
-    // Debug the board and update _currentPlay
-    for (int i = 0; i < board.Count; i++)
+    [System.Serializable]
+    public class Game
     {
-        for (int j = 0; j < board[i].Count; j++)
-        {
-            // Log the board value
-            Debug.Log($"board[{i}][{j}] = {board[i][j]}");
-
-            // Update _currentPlay based on board value
-            switch (board[i][j])
-            {
-                case "X":
-                    _currentPlay[i, j] = Player.X;
-                    break;
-                case "O":
-                    _currentPlay[i, j] = Player.O;
-                    break;
-                case "None":
-                    _currentPlay[i, j] = Player.None;
-                    break;
-                default:
-                    Debug.LogWarning($"Unexpected board value at [{i}][{j}]: {board[i][j]}");
-                    break;
-            }
-
-            // Optionally log _currentPlay for verification
-            Debug.Log($"_currentPlay[{i},{j}] = {_currentPlay[i, j]}");
-        }
+        public List<List<string>> board { get; set; }
     }
-}
-catch (System.Exception ex)
-{
-    Debug.LogError($"Error processing game data: {ex.Message}");
-}
-
-    SynchronizeDisplay();
-    _round = int.Parse(data.round);
-    _player1Score = int.Parse(data.player_1_score);
-    _player2Score = int.Parse(data.player_2_score);
-
-    // Determine whose turn it is
-    if (data.player_turn == "player_1")
-    {
-        _playersTurn = PlayerNumbers.Player_1;
-        Debug.Log("Player 1's turn.");
-    }
-    else if (data.player_turn == "player_2")
-    {
-        _playersTurn = PlayerNumbers.Player_2;
-        Debug.Log("Player 2's turn.");
-    }
-}
-    
-[System.Serializable]
-public class GameData
-{
-    public string id { get; set; }
-    public string player_1 { get; set; }
-    public string player_2 { get; set; }
-    public Game game { get; set; }
-    public string created_at { get; set; }
-    public string updated_at { get; set; }
-    public string status { get; set; }
-    public string player_turn { get; set; }
-    public string player_1_score { get; set; }
-    public string player_2_score { get; set; }
-    public string round { get; set; }
-}
-
-[System.Serializable]
-public class Game
-{
-    public List<List<string>> board { get; set; }
-}
 //////////////////////////////////////////////
    private IEnumerator UpdateGameData()
 {
@@ -515,20 +421,87 @@ public class Game
         {
             Debug.Log(webRequest.downloadHandler.text);
             Debug.Log("Game data updated successfully.");
+            StartCoroutine(HasGameChanged());
         }
     }
 }
 
 
 
-private IEnumerator HasGameChanged()
-{
-    Debug.Log("Game should change hasgamechanged");
-    string nickname = PlayerPrefs.GetString("nickname");
-    string password = PlayerPrefs.GetString("password");
-    string url = $"https://ukfig2.sk/ukfIG2_Piskvorky/checkGameStatus.php?nickname={nickname}&password={password}&gameId={_gameId}";
+    private IEnumerator HasGameChanged()
+    {
+        Debug.Log("Hs game changed?");
+        string nickname = PlayerPrefs.GetString("Nickname");
+        string password = PlayerPrefs.GetString("Password");
+        string url = $"https://ukfig2.sk/ukfIG2_Piskvorky/checkGameStatus.php?nickname={nickname}&password={password}&gameId={_gameId}";
 
-    using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
+            using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
+            {
+                yield return webRequest.SendWebRequest();
+
+                if (webRequest.result == UnityWebRequest.Result.ConnectionError || webRequest.result == UnityWebRequest.Result.ProtocolError)
+                {
+                    Debug.LogError(webRequest.error);
+                }
+                else
+                {
+                    string jsonResponse = webRequest.downloadHandler.text;
+                    GameStatusData statusData = JsonUtility.FromJson<GameStatusData>(jsonResponse);
+
+                    if (statusData.status == "Changed")
+                    {
+                        StopCoroutine(HasGameChanged());
+                        StartCoroutine(FetchGameData());
+                        yield return new WaitForSeconds(5);
+                        //StartCoroutine(UpdateGameStatusToNothing());
+                    }
+                }
+                // Wait for 5 seconds before making the next request
+                yield return new WaitForSeconds(5);
+
+                // Make the next request
+                StartCoroutine(HasGameChanged());
+            }
+        
+    }
+
+    [System.Serializable]
+    private class GameStatusData
+    {
+        public string status;
+    }
+
+
+    private string ConvertCurrentPlayToStandardJson()
+    {
+        var board = new string[3][];
+        for (int x = 0; x < 3; x++)
+        {
+            board[x] = new string[3];
+            for (int y = 0; y < 3; y++)
+            {
+                board[x][y] = _currentPlay[x, y] == Player.None ? "None" : _currentPlay[x, y].ToString();
+            }
+        }
+
+        var gameData = new { board = board };
+        return JsonConvert.SerializeObject(gameData, Formatting.Indented);
+    }
+
+    private IEnumerator UpdateGameStatusToNothing()
+{
+    Debug.Log("Updating game status to Nothing...");
+    string nickname = PlayerPrefs.GetString("Nickname");
+    string password = PlayerPrefs.GetString("Password");
+    string url = "https://ukfig2.sk/ukfIG2_Piskvorky/updateGameStatus.php";
+
+    WWWForm form = new WWWForm();
+    form.AddField("nickname", nickname);
+    form.AddField("password", password);
+    form.AddField("gameId", _gameId);
+    form.AddField("status", "Nothing");
+
+    using (UnityWebRequest webRequest = UnityWebRequest.Post(url, form))
     {
         yield return webRequest.SendWebRequest();
 
@@ -538,47 +511,10 @@ private IEnumerator HasGameChanged()
         }
         else
         {
-            string jsonResponse = webRequest.downloadHandler.text;
-            GameStatusData statusData = JsonUtility.FromJson<GameStatusData>(jsonResponse);
-
-            if (statusData.status == "changed")
-            {
-                StartCoroutine(FetchGameData());
-            }
+            Debug.Log(webRequest.downloadHandler.text);
+            Debug.Log("Game status updated to Nothing successfully.");
         }
     }
-}
-
-[System.Serializable]
-private class GameStatusData
-{
-    public string status;
-}
-
-
-
-
-
-
-private string ConvertCurrentPlayToStandardJson()
-{
-    string json = "{ \"board\": [\n";
-
-    for (int x = 0; x < 3; x++)
-    {
-        json += "  [ ";
-        for (int y = 0; y < 3; y++)
-        {
-            string value = _currentPlay[x, y] == Player.None ? "None" : _currentPlay[x, y].ToString();
-            json += $"\"{value}\"";
-            if (y < 2) json += ", "; // Add a comma if it's not the last element in the row
-        }
-        json += " ]";
-        if (x < 2) json += ",\n"; // Add a comma if it's not the last row
-    }
-
-    json += "\n] }";
-    return json;
 }
 
 }
