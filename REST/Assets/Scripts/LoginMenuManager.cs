@@ -28,16 +28,29 @@ public class LoginMenuScript : MonoBehaviour
     [SerializeField] private int _id;
     [SerializeField] private string _nickName;
     [SerializeField] private string _password;
-
     [SerializeField] private int _temporaryId;
 
-    void Start()
+    [SerializeField] private GameObject _notLoggedInCanvas;
+    [SerializeField] private GameObject _loggedInCanvas;
+
+    [SerializeField] private GameObject _startSearchingForOponentButton;
+    [SerializeField] private GameObject _buttonPrefab; // Assign the button prefab in the Inspector
+    [SerializeField] private Transform _contentParent; // Assign the Content GameObject in the Inspector    
+
+    private void Start()
     {
         // Initially hide all UI elements
         HideAllUI();
-
+        _loggedInCanvas.gameObject.SetActive(false);
+        _notLoggedInCanvas.gameObject.SetActive(true);
+        _id = PlayerPrefs.GetInt("Id");
+        _nickName = PlayerPrefs.GetString("Nickname");
+        _password = PlayerPrefs.GetString("Password");
+        Debug.Log(_id);
+        Debug.Log(_nickName);
+        Debug.Log(_password);
         // Check PlayerPrefs for nickname and password
-        if (string.IsNullOrEmpty(PlayerPrefs.GetString("Nickname")) || string.IsNullOrEmpty(PlayerPrefs.GetString("Password")) || string.IsNullOrEmpty(PlayerPrefs.GetString("id")))
+        if (_id == 0 && string.IsNullOrEmpty(_nickName) && string.IsNullOrEmpty(_password))
         {
             // Show UI for entering nickname
             ShowEnterNicknameUI();
@@ -45,10 +58,16 @@ public class LoginMenuScript : MonoBehaviour
         else
         {
             //Prehodime sa do druheheo canvasu
+            _loggedInCanvas.gameObject.SetActive(true);
+            _notLoggedInCanvas.gameObject.SetActive(false);
+
+            // Display start searching for opponent button
+            _startSearchingForOponentButton.gameObject.SetActive(true);
+            OnFetchOpponentsButtonClicked();
         }
     }
 
-    void Update()
+    private void Update()
     {
     }
 
@@ -104,7 +123,7 @@ public class LoginMenuScript : MonoBehaviour
         _loginButton.SetActive(false);
     }
 
-    public void ResetPlayerPrefs()
+    private void ResetPlayerPrefs()
     {
         Debug.Log("Nickname: " + PlayerPrefs.GetString("Nickname"));
         Debug.Log("Password: " + PlayerPrefs.GetString("Password"));
@@ -118,7 +137,7 @@ public class LoginMenuScript : MonoBehaviour
     }
 
 ////////////////////////////REST    CheckNickname/////////////////////////
-    public void OnCheckNicknameButtonClicked()
+    private void OnCheckNicknameButtonClicked()
     {
         _nickName = _nicknameInput.text;
         StartCoroutine(CheckNicknameCoroutine(_nickName));
@@ -188,7 +207,7 @@ public class LoginMenuScript : MonoBehaviour
     }
 ///////////////////////////////REST CheckNickname////////////////////////////////
 ////////////////////////////REST Login Button/////////////////////////
-public void OnLoginButtonClicked()
+private void OnLoginButtonClicked()
 {
     _password = _passwordLoginInput.text;
     StartCoroutine(LoginCoroutine(_temporaryId, _password));
@@ -244,7 +263,8 @@ private void HandleLoginResponse(string responseText)
             PlayerPrefs.SetString("Password", _password);
 
             // Hide all UI elements
-            HideAllUI();
+            _notLoggedInCanvas.gameObject.SetActive(false);
+            _loggedInCanvas.gameObject.SetActive(true);
         }
         else
         {
@@ -267,7 +287,7 @@ private class LoginResponse
 }
 ///////////////////////////////REST Login Button////////////////////////////////
 ///////////////////////////////REST Register Button////////////////////////////////
-public void OnRegisterButtonClicked()
+private void OnRegisterButtonClicked()
 {
     _nickName = _nicknameInput.text;
     _password = _passwordRegisterInput.text;
@@ -324,7 +344,8 @@ private void HandleRegisterResponse(string responseText)
             PlayerPrefs.SetString("Password", _password);
 
             // Hide all UI elements
-            HideAllUI();
+            _notLoggedInCanvas.gameObject.SetActive(false);
+            _loggedInCanvas.gameObject.SetActive(true);
         }
         else
         {
@@ -347,5 +368,251 @@ private class RegisterResponse
     public string password;
 }
 ///////////////////////////////REST Register Button////////////////////////////////
+//////////////////////////////REST StartSearching for oponent//////////////////////
+public void OnStartSearchingForOponentButtonClicked()
+{
+    _id = PlayerPrefs.GetInt("Id");
+    _nickName = PlayerPrefs.GetString("Nickname");
+    _password = PlayerPrefs.GetString("Password");
+    StartCoroutine(StartSearchingForOponentCoroutine(_id, _nickName, _password));
+}
+
+private IEnumerator StartSearchingForOponentCoroutine(int id, string nickname, string password)
+{
+    string url = "https://ukfig2.sk/ukfIG2_Piskvorky/start_searching.php"; // Replace with your backend URL
+    string json = "{\"id\": " + id + ", \"nickname\": \"" + nickname + "\", \"password\": \"" + password + "\"}";
+
+    // Debug log for the data being sent to the backend
+    Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+    using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+    {
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
+
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("Error: " + www.error);
+        }
+        else
+        {
+            // Parse the response
+            string responseText = www.downloadHandler.text;
+            Debug.Log("Response Text: " + responseText); // Debug log for response text
+            HandleStartSearchingResponse(responseText);
+        }
+    }
+}
+
+private void HandleStartSearchingResponse(string responseText)
+{
+    // Assuming the response is in JSON format
+    // Example response: {"status": "success"} or {"status": "unsuccessful"}
+    try
+    {
+        var response = JsonUtility.FromJson<StartSearchingResponse>(responseText);
+        Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+
+        if (response.status == "success")
+        {
+            Debug.Log("Successfully started searching for an opponent.");
+        }
+        else
+        {
+            Debug.LogError("Failed to start searching for an opponent.");
+        }
+    }
+    catch (ArgumentException e)
+    {
+        Debug.LogError("JSON parse error: " + e.Message);
+    }
+}
+
+[System.Serializable]
+private class StartSearchingResponse
+{
+    public string status;
+}
+//////////////////////////////REST StartSearching for oponent//////////////////////
+//////////////////////////////REST Fetch Opponents//////////////////////
+    public void OnFetchOpponentsButtonClicked()
+    {
+        _id = PlayerPrefs.GetInt("Id");
+        _password = PlayerPrefs.GetString("Password");
+        StartCoroutine(FetchOpponentsCoroutine(_id, _password));
+    }
+
+
+    private IEnumerator FetchOpponentsCoroutine(int id, string password)
+    {
+        string url = "https://ukfig2.sk/ukfIG2_Piskvorky/fetch_opponents.php"; // Replace with your backend URL
+        string json = "{\"id\": " + id + ", \"password\": \"" + password + "\"}";
+
+        // Debug log for the data being sent to the backend
+        Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+        using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+        {
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
+
+            yield return www.SendWebRequest();
+
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("Error: " + www.error);
+            }
+            else
+            {
+                // Parse the response
+                string responseText = www.downloadHandler.text;
+                Debug.Log("Response Text: " + responseText); // Debug log for response text
+                HandleFetchOpponentsResponse(responseText);
+            }
+        }
+    }
+
+    private void HandleFetchOpponentsResponse(string responseText)
+    {
+        // Assuming the response is in JSON format
+        // Example response: {"status": "success", "opponents": [{"id": 123, "nickname": "ivan", "invitee_user_id": 456, "came_here_at": "2024-11-30 12:00:00"}]}
+        try
+        {
+            var response = JsonUtility.FromJson<FetchOpponentsResponse>(responseText);
+            Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+
+            if (response.status == "success")
+            {
+                foreach (var opponent in response.opponents)
+                {
+                    CreateOpponentButton(opponent);
+                }
+            }
+            else
+            {
+                Debug.LogError("Failed to fetch opponents.");
+            }
+        }
+        catch (ArgumentException e)
+        {
+            Debug.LogError("JSON parse error: " + e.Message);
+        }
+    }
+
+    private void CreateOpponentButton(OpponentData opponent)
+    {
+        // Create a new button for each opponent
+        GameObject newButton = Instantiate(_buttonPrefab, _contentParent);
+        TMP_Text buttonText = newButton.GetComponentInChildren<TMP_Text>();
+    
+        if (buttonText == null)
+        {
+            Debug.LogError("Button Prefab does not have a TMP_Text component.");
+            return;
+        }
+    
+        buttonText.text = opponent.nickname;
+        newButton.GetComponent<Button>().onClick.AddListener(() => OnOpponentButtonClicked(opponent.invitee_user_id));
+    
+        // Position the new button 40 units above the existing buttons
+        RectTransform newButtonRectTransform = newButton.GetComponent<RectTransform>();
+        RectTransform contentRectTransform = _contentParent.GetComponent<RectTransform>();
+        newButtonRectTransform.anchoredPosition = new Vector2(0, -40 * (_contentParent.childCount - 1));
+    
+        newButton.SetActive(true);
+    }
+
+
+    private void OnOpponentButtonClicked(int opponentId)
+{
+    _id = PlayerPrefs.GetInt("Id");
+    _nickName = PlayerPrefs.GetString("Nickname");
+    _password = PlayerPrefs.GetString("Password");
+    StartCoroutine(InviteOpponentCoroutine(opponentId, _id, _nickName, _password));
+}
+
+private IEnumerator InviteOpponentCoroutine(int opponentId, int userId, string nickname, string password)
+{
+    string url = "https://ukfig2.sk/ukfIG2_Piskvorky/invite_opponent.php"; // Replace with your backend URL
+    string json = "{\"opponentId\": " + opponentId + ", \"userId\": " + userId + ", \"nickname\": \"" + nickname + "\", \"password\": \"" + password + "\"}";
+
+    // Debug log for the data being sent to the backend
+    Debug.Log("Sending to backend: URL = " + url + ", Data = " + json);
+
+    using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+    {
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
+
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("Error: " + www.error);
+        }
+        else
+        {
+            // Parse the response
+            string responseText = www.downloadHandler.text;
+            Debug.Log("Response Text: " + responseText); // Debug log for response text
+            HandleInviteOpponentResponse(responseText);
+        }
+    }
+}
+
+private void HandleInviteOpponentResponse(string responseText)
+{
+    // Assuming the response is in JSON format
+    // Example response: {"status": "success"} or {"status": "unsuccessful"}
+    try
+    {
+        var response = JsonUtility.FromJson<InviteOpponentResponse>(responseText);
+        Debug.Log("Parsed Response: " + response.status); // Debug log for parsed response
+
+        if (response.status == "success")
+        {
+            Debug.Log("Successfully invited opponent.");
+        }
+        else
+        {
+            Debug.LogError("Failed to invite opponent.");
+        }
+    }
+    catch (ArgumentException e)
+    {
+        Debug.LogError("JSON parse error: " + e.Message);
+    }
+}
+
+[System.Serializable]
+private class InviteOpponentResponse
+{
+    public string status;
+}
+
+    [System.Serializable]
+    private class FetchOpponentsResponse
+    {
+        public string status;
+        public List<OpponentData> opponents;
+    }
+
+    [System.Serializable]
+    private class OpponentData
+    {
+        public int id;
+        public string nickname;
+        public int invitee_user_id;
+        public string came_here_at;
+    }
+    //////////////////////////////REST Fetch Opponents//////////////////////
 
 }
